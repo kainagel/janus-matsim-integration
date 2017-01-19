@@ -3,7 +3,7 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.matsim</groupId>
-	<artifactId>matsim-example-project</artifactId>
+	<artifactId>janus-matsim-integration</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>MATSim example project</name>
@@ -27,8 +27,28 @@
 		<repository>
 		    <id>jitpack.io</id>
 		    <url>https://jitpack.io</url>
+		</repository>		
+		<repository>
+			<id>org.janusproject-maven</id>
+			<name>Janus Project Repository</name>
+			<url>http://www.janus-project.org/maven</url>
+		</repository>
+		<repository>
+			<id>sarl-repository</id>
+			<url>http://maven.sarl.io/</url>
 		</repository>
 	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>org.janusproject-maven</id>
+			<name>Janus Project Repository</name>
+			<url>http://www.janus-project.org/maven</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
 
 	<dependencies>
 		<dependency>
@@ -60,7 +80,13 @@
 			<artifactId>silo</artifactId>
 			<version>master-SNAPSHOT</version>
 		</dependency>
- -->	</dependencies>
+ -->
+		<dependency>
+			<groupId>org.janus-project.kernel</groupId>
+			<artifactId>kernel</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<plugins>
