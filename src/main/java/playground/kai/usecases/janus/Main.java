@@ -18,7 +18,6 @@
  * *********************************************************************** */
 package playground.kai.usecases.janus;
 
-import com.google.inject.Provider;
 import org.apache.log4j.Logger;
 import org.janusproject.kernel.agent.Kernels;
 import org.matsim.api.core.v01.Scenario;
@@ -27,72 +26,72 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
-import org.matsim.core.controler.OutputDirectoryHierarchy;
+import org.matsim.core.controler.OutputDirectoryHierarchy.OverwriteFileSetting;
 import org.matsim.core.controler.events.ShutdownEvent;
 import org.matsim.core.controler.listener.ShutdownListener;
 import org.matsim.core.mobsim.framework.AgentSource;
 import org.matsim.core.mobsim.framework.Mobsim;
 import org.matsim.core.mobsim.framework.MobsimDriverAgent;
-import org.matsim.core.mobsim.framework.MobsimFactory;
 import org.matsim.core.mobsim.qsim.QSim;
 import org.matsim.core.mobsim.qsim.QSimUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleUtils;
 
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
 /**
  * @author nagel
  *
  */
-public class Main {
+class Main {
 
 	public static void main(String[] args) {
+
+		// ---
+
 		final Config config = ConfigUtils.createConfig() ;
 
-		config.network().setInputFile("examples/equil/network.xml");
+		config.network().setInputFile("https://github.com/matsim-org/matsim/raw/master/examples/scenarios/equil/network.xml");
 
 		config.qsim().setEndTime(36.*3600.);
 
 		config.controler().setLastIteration(0);
 
+		//---
+
 		final Scenario scenario = ScenarioUtils.loadScenario(config) ;
 
+		// ---
+
 		final Controler ctrl = new Controler(scenario) ;
-		ctrl.getConfig().controler().setOverwriteFileSetting(
-				true ?
-						OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles :
-						OutputDirectoryHierarchy.OverwriteFileSetting.failIfDirectoryExists );
+		ctrl.getConfig().controler().setOverwriteFileSetting( OverwriteFileSetting.deleteDirectoryIfExists ) ;
 
 		ctrl.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
+			@Override public void install() {
 				bindMobsim().toProvider(new Provider<Mobsim>() {
-					@Override
-					public Mobsim get() {
-						return new MobsimFactory() {
+					@Inject EventsManager events ;
+					@Override public Mobsim get() {
+						final QSim qsim = QSimUtils.createDefaultQSim(scenario, events );
+
+						qsim.addAgentSource(new AgentSource() {
 							@Override
-							public Mobsim createMobsim(final Scenario sc, final EventsManager eventsManager) {
-								final QSim qsim = (QSim) QSimUtils.createDefaultQSim(sc, eventsManager);
+							public void insertAgentsIntoMobsim() {
+								Logger.getLogger(this.getClass()).warn("here");
 
-								qsim.addAgentSource(new AgentSource() {
-									@Override
-									public void insertAgentsIntoMobsim() {
-										Logger.getLogger(this.getClass()).warn("here");
+								final MobsimDriverAgent ag = new MyMobsimAgent(scenario.getNetwork());
 
-										final MobsimDriverAgent ag = new MyMobsimAgent(sc.getNetwork());
+								// insert vehicle:
+								final Vehicle vehicle = VehicleUtils.getFactory().createVehicle(ag.getPlannedVehicleId(), VehicleUtils.getDefaultVehicleType());
+								qsim.createAndParkVehicleOnLink(vehicle, ag.getCurrentLinkId());
 
-										// insert vehicle:
-										final Vehicle vehicle = VehicleUtils.getFactory().createVehicle(ag.getPlannedVehicleId(), VehicleUtils.getDefaultVehicleType());
-										qsim.createAndParkVehicleOnLink(vehicle, ag.getCurrentLinkId());
-
-										// insert traveler agent:
-										qsim.insertAgentIntoMobsim(ag);
-									}
-								});
-
-								return qsim;
+								// insert traveler agent:
+								qsim.insertAgentIntoMobsim(ag);
 							}
-						}.createMobsim(ctrl.getScenario(), ctrl.getEvents());
+						});
+
+						return qsim;
 					}
 				});
 			}
@@ -104,6 +103,8 @@ public class Main {
 				Kernels.killAll();
 			}
 		});
+
+		// ---
 
 		ctrl.run() ;
 
